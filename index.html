@@ -362,8 +362,8 @@
             pokemonNames: ["Pikachu", "Charmander", "Squirtle", "Bulbasaur", "Jigglypuff"]
         };
 
-        // Smart white background removal with edge detection
-        function processImage(image, targetSize, isPokemon4 = false) {
+        // Remove white background and resize to exact size
+        function processImage(image, targetSize) {
             return new Promise((resolve) => {
                 const originalWidth = image.naturalWidth;
                 const originalHeight = image.naturalHeight;
@@ -382,37 +382,17 @@
                 const imageData = ctx.getImageData(0, 0, targetSize, targetSize);
                 const data = imageData.data;
 
-                // Smart white background removal
+                // Remove white and light backgrounds
                 for (let i = 0; i < data.length; i += 4) {
                     const red = data[i];
                     const green = data[i + 1];
                     const blue = data[i + 2];
-                    const alpha = data[i + 3];
 
-                    // Skip already transparent pixels
-                    if (alpha === 0) continue;
-
-                    const isPureWhite = red === 255 && green === 255 && blue === 255;
-                    const isVeryLight = red > 240 && green > 240 && blue > 240;
+                    const isWhite = red > 220 && green > 220 && blue > 220;
+                    const isLight = red > 180 && green > 180 && blue > 180;
                     
-                    // For Pokémon 4, use more conservative removal to preserve white parts
-                    if (isPokemon4) {
-                        // Only remove pure white pixels at the edges (likely background)
-                        const x = (i / 4) % targetSize;
-                        const y = Math.floor((i / 4) / targetSize);
-                        
-                        // Check if this pixel is at the edge of the image
-                        const isEdgePixel = x < 5 || x > targetSize - 5 || y < 5 || y > targetSize - 5;
-                        
-                        if (isPureWhite && isEdgePixel) {
-                            data[i + 3] = 0; // Remove only edge pure white pixels
-                        }
-                        // Keep all other white/light pixels (likely part of the Pokémon)
-                    } else {
-                        // For other Pokémon, use normal removal
-                        if (isPureWhite || isVeryLight) {
-                            data[i + 3] = 0;
-                        }
+                    if (isWhite || isLight) {
+                        data[i + 3] = 0; // Set alpha to transparent
                     }
                 }
 
@@ -476,11 +456,9 @@
                 // Process player image to exact size
                 processedImages.player = await processImage(images.player, CHARACTER_SIZE);
 
-                // Process pokemon images to exact size with special handling for pokemon4
+                // Process pokemon images to exact size
                 for (let i = 0; i < 5; i++) {
-                    const isPokemon4 = (i === 3); // pokemon4 is the 4th one (index 3)
-                    processedImages.pokemons[i] = await processImage(images.pokemons[i], POKEMON_SIZE, isPokemon4);
-                    console.log(`Processed Pokémon ${i+1}${isPokemon4 ? ' (special white preservation)' : ''}`);
+                    processedImages.pokemons[i] = await processImage(images.pokemons[i], POKEMON_SIZE);
                 }
 
                 loading.style.display = 'none';
@@ -520,7 +498,6 @@
             }
             
             console.log("Game initialized with 70x70 characters and pokemon");
-            console.log("Special handling: Pokémon 4 preserves white parts");
             drawGame();
         }
         
