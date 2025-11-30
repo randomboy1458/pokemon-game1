@@ -334,19 +334,17 @@
             pokemons: [null, null, null, null, null]
         };
 
-        // Store original dimensions
-        const originalDimensions = {
-            player: { width: 0, height: 0 },
-            pokemons: [{ width: 0, height: 0 }, { width: 0, height: 0 }, { width: 0, height: 0 }, { width: 0, height: 0 }, { width: 0, height: 0 }]
-        };
+        // Size limits to prevent oversized images
+        const MAX_PLAYER_SIZE = 40;
+        const MAX_POKEMON_SIZE = 35;
         
         // Game state
         const gameState = {
             player: {
                 x: 300,
                 y: 200,
-                width: 0,
-                height: 0,
+                width: MAX_PLAYER_SIZE,
+                height: MAX_PLAYER_SIZE,
                 speed: 3,
                 direction: 'down'
             },
@@ -363,21 +361,32 @@
             pokemonNames: ["Pikachu", "Charmander", "Squirtle", "Bulbasaur", "Jigglypuff"]
         };
 
-        // Remove white background
-        function removeWhiteBackground(image) {
+        // Remove white background with size limits
+        function removeWhiteBackground(image, maxSize) {
             return new Promise((resolve) => {
-                const originalWidth = image.naturalWidth;
-                const originalHeight = image.naturalHeight;
+                let originalWidth = image.naturalWidth;
+                let originalHeight = image.naturalHeight;
+                
+                // Calculate scaling to fit within maxSize while maintaining aspect ratio
+                let scale = 1;
+                if (originalWidth > maxSize || originalHeight > maxSize) {
+                    scale = maxSize / Math.max(originalWidth, originalHeight);
+                }
+                
+                const targetWidth = Math.round(originalWidth * scale);
+                const targetHeight = Math.round(originalHeight * scale);
+                
+                console.log(`Processing image: ${originalWidth}x${originalHeight} -> ${targetWidth}x${targetHeight}`);
                 
                 const canvas = document.createElement('canvas');
-                canvas.width = originalWidth;
-                canvas.height = originalHeight;
+                canvas.width = targetWidth;
+                canvas.height = targetHeight;
                 const ctx = canvas.getContext('2d');
                 ctx.imageSmoothingEnabled = false;
 
-                ctx.drawImage(image, 0, 0, originalWidth, originalHeight);
+                ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
 
-                const imageData = ctx.getImageData(0, 0, originalWidth, originalHeight);
+                const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
                 const data = imageData.data;
 
                 for (let i = 0; i < data.length; i += 4) {
@@ -398,8 +407,8 @@
                 const processedImage = new Image();
                 processedImage.onload = () => resolve({
                     image: processedImage,
-                    width: originalWidth,
-                    height: originalHeight
+                    width: targetWidth,
+                    height: targetHeight
                 });
                 processedImage.src = canvas.toDataURL();
             });
@@ -412,6 +421,8 @@
             
             function imageLoaded() {
                 loadedCount++;
+                console.log(`Loaded ${loadedCount}/${totalImages} images`);
+                
                 if (loadedCount === totalImages) {
                     processAllImages();
                 }
@@ -449,22 +460,16 @@
             loading.textContent = "Processing images...";
 
             try {
-                // Process player image
-                const playerResult = await removeWhiteBackground(images.player);
+                // Process player image with size limit
+                const playerResult = await removeWhiteBackground(images.player, MAX_PLAYER_SIZE);
                 processedImages.player = playerResult.image;
-                originalDimensions.player = {
-                    width: playerResult.width,
-                    height: playerResult.height
-                };
+                gameState.player.width = playerResult.width;
+                gameState.player.height = playerResult.height;
 
-                // Process pokemon images
+                // Process pokemon images with size limits
                 for (let i = 0; i < 5; i++) {
-                    const pokemonResult = await removeWhiteBackground(images.pokemons[i]);
+                    const pokemonResult = await removeWhiteBackground(images.pokemons[i], MAX_POKEMON_SIZE);
                     processedImages.pokemons[i] = pokemonResult.image;
-                    originalDimensions.pokemons[i] = {
-                        width: pokemonResult.width,
-                        height: pokemonResult.height
-                    };
                 }
 
                 loading.style.display = 'none';
@@ -477,13 +482,9 @@
         
         // Initialize game
         function initGame() {
-            // Set player dimensions
-            gameState.player.width = originalDimensions.player.width;
-            gameState.player.height = originalDimensions.player.height;
+            // Reset game state
             gameState.player.x = 300 - gameState.player.width / 2;
             gameState.player.y = 200 - gameState.player.height / 2;
-            
-            // Reset game state
             gameState.caughtPokemons = 0;
             gameState.steps = 0;
             gameState.pokemons = [];
@@ -495,17 +496,14 @@
             // Reset pokeballs
             pokeballs.forEach(ball => ball.classList.remove('caught'));
             
-            // Create pokemons
+            // Create pokemons with fixed sizes
             for (let i = 0; i < 5; i++) {
-                const pokemonWidth = originalDimensions.pokemons[i].width;
-                const pokemonHeight = originalDimensions.pokemons[i].height;
-                
                 gameState.pokemons.push({
                     id: i,
-                    x: Math.random() * (canvas.width - pokemonWidth),
-                    y: Math.random() * (canvas.height - pokemonHeight),
-                    width: pokemonWidth,
-                    height: pokemonHeight,
+                    x: Math.random() * (canvas.width - MAX_POKEMON_SIZE),
+                    y: Math.random() * (canvas.height - MAX_POKEMON_SIZE),
+                    width: MAX_POKEMON_SIZE,
+                    height: MAX_POKEMON_SIZE,
                     caught: false
                 });
             }
@@ -526,7 +524,9 @@
                     ctx.drawImage(
                         processedImages.pokemons[pokemon.id], 
                         Math.round(pokemon.x), 
-                        Math.round(pokemon.y)
+                        Math.round(pokemon.y),
+                        pokemon.width,
+                        pokemon.height
                     );
                 }
             });
@@ -536,7 +536,9 @@
                 ctx.drawImage(
                     processedImages.player, 
                     Math.round(gameState.player.x), 
-                    Math.round(gameState.player.y)
+                    Math.round(gameState.player.y),
+                    gameState.player.width,
+                    gameState.player.height
                 );
             }
         }
