@@ -362,13 +362,13 @@
             pokemonNames: ["Pikachu", "Charmander", "Squirtle", "Bulbasaur", "Jigglypuff"]
         };
 
-        // Simple PNG background removal - just resize to 70x70
-        function resizeImage(image, targetSize) {
+        // Remove white background and resize to exact size
+        function processImage(image, targetSize) {
             return new Promise((resolve) => {
                 const originalWidth = image.naturalWidth;
                 const originalHeight = image.naturalHeight;
                 
-                console.log(`Resizing image: ${originalWidth}x${originalHeight} -> ${targetSize}x${targetSize}`);
+                console.log(`Processing image: ${originalWidth}x${originalHeight} -> ${targetSize}x${targetSize}`);
                 
                 const canvas = document.createElement('canvas');
                 canvas.width = targetSize;
@@ -376,12 +376,31 @@
                 const ctx = canvas.getContext('2d');
                 ctx.imageSmoothingEnabled = false;
 
-                // Simply draw and scale image - PNG transparency will be preserved
+                // Draw and scale image to fit exactly in targetSize
                 ctx.drawImage(image, 0, 0, targetSize, targetSize);
+
+                const imageData = ctx.getImageData(0, 0, targetSize, targetSize);
+                const data = imageData.data;
+
+                // Remove white and light backgrounds
+                for (let i = 0; i < data.length; i += 4) {
+                    const red = data[i];
+                    const green = data[i + 1];
+                    const blue = data[i + 2];
+
+                    const isWhite = red > 220 && green > 220 && blue > 220;
+                    const isLight = red > 180 && green > 180 && blue > 180;
+                    
+                    if (isWhite || isLight) {
+                        data[i + 3] = 0; // Set alpha to transparent
+                    }
+                }
+
+                ctx.putImageData(imageData, 0, 0);
 
                 const processedImage = new Image();
                 processedImage.onload = () => {
-                    console.log(`Successfully resized image to ${targetSize}x${targetSize}`);
+                    console.log(`Successfully processed image to ${targetSize}x${targetSize}`);
                     resolve(processedImage);
                 };
                 processedImage.src = canvas.toDataURL();
@@ -431,15 +450,15 @@
 
         // Process all images to exact sizes
         async function processAllImages() {
-            loading.textContent = "Resizing images to 70x70...";
+            loading.textContent = "Processing images to 70x70...";
 
             try {
                 // Process player image to exact size
-                processedImages.player = await resizeImage(images.player, CHARACTER_SIZE);
+                processedImages.player = await processImage(images.player, CHARACTER_SIZE);
 
                 // Process pokemon images to exact size
                 for (let i = 0; i < 5; i++) {
-                    processedImages.pokemons[i] = await resizeImage(images.pokemons[i], POKEMON_SIZE);
+                    processedImages.pokemons[i] = await processImage(images.pokemons[i], POKEMON_SIZE);
                 }
 
                 loading.style.display = 'none';
