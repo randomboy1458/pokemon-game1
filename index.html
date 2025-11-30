@@ -336,7 +336,7 @@
 
         // Larger sizes for better visibility on 600x400 map
         const PLAYER_SIZE = 40;      // 40x40 pixels
-        const POKEMON_SIZE = 40;     // 40x40 pixels
+        const POKEMON_SIZE = 60;     // 60x60 pixels (increased from 40x40)
         const PLAYER_SPEED = 4;      // Slightly faster movement
         
         // Game state
@@ -482,7 +482,7 @@
             // Reset pokeballs
             pokeballs.forEach(ball => ball.classList.remove('caught'));
             
-            // Create pokemons with exact sizes
+            // Create pokemons with exact sizes (60x60)
             for (let i = 0; i < 5; i++) {
                 gameState.pokemons.push({
                     id: i,
