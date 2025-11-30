@@ -334,18 +334,18 @@
             pokemons: [null, null, null, null, null]
         };
 
-        // Larger sizes for better visibility on 600x400 map
-        const PLAYER_SIZE = 40;      // 40x40 pixels
-        const POKEMON_SIZE = 60;     // 60x60 pixels (increased from 40x40)
-        const PLAYER_SPEED = 4;      // Slightly faster movement
+        // Large sizes for maximum visibility on 600x400 map
+        const CHARACTER_SIZE = 70;      // 70x70 pixels for player
+        const POKEMON_SIZE = 70;        // 70x70 pixels for pokemon
+        const PLAYER_SPEED = 5;         // Faster movement for larger map
         
         // Game state
         const gameState = {
             player: {
                 x: 300,
                 y: 200,
-                width: PLAYER_SIZE,
-                height: PLAYER_SIZE,
+                width: CHARACTER_SIZE,
+                height: CHARACTER_SIZE,
                 speed: PLAYER_SPEED,
                 direction: 'down'
             },
@@ -399,7 +399,10 @@
                 ctx.putImageData(imageData, 0, 0);
 
                 const processedImage = new Image();
-                processedImage.onload = () => resolve(processedImage);
+                processedImage.onload = () => {
+                    console.log(`Successfully processed image to ${targetSize}x${targetSize}`);
+                    resolve(processedImage);
+                };
                 processedImage.src = canvas.toDataURL();
             });
         }
@@ -411,7 +414,7 @@
             
             function imageLoaded() {
                 loadedCount++;
-                console.log(`Loaded ${loadedCount}/${totalImages} images`);
+                console.log(`Loaded ${loadedCount}/${totalImages} images - Size: ${this.naturalWidth}x${this.naturalHeight}`);
                 
                 if (loadedCount === totalImages) {
                     processAllImages();
@@ -447,11 +450,11 @@
 
         // Process all images to exact sizes
         async function processAllImages() {
-            loading.textContent = "Processing images...";
+            loading.textContent = "Processing images to 70x70...";
 
             try {
                 // Process player image to exact size
-                processedImages.player = await processImage(images.player, PLAYER_SIZE);
+                processedImages.player = await processImage(images.player, CHARACTER_SIZE);
 
                 // Process pokemon images to exact size
                 for (let i = 0; i < 5; i++) {
@@ -469,8 +472,8 @@
         // Initialize game
         function initGame() {
             // Reset game state
-            gameState.player.x = 300 - PLAYER_SIZE / 2;
-            gameState.player.y = 200 - PLAYER_SIZE / 2;
+            gameState.player.x = 300 - CHARACTER_SIZE / 2;
+            gameState.player.y = 200 - CHARACTER_SIZE / 2;
             gameState.caughtPokemons = 0;
             gameState.steps = 0;
             gameState.pokemons = [];
@@ -482,7 +485,7 @@
             // Reset pokeballs
             pokeballs.forEach(ball => ball.classList.remove('caught'));
             
-            // Create pokemons with exact sizes (60x60)
+            // Create pokemons with exact sizes (70x70)
             for (let i = 0; i < 5; i++) {
                 gameState.pokemons.push({
                     id: i,
@@ -494,6 +497,7 @@
                 });
             }
             
+            console.log("Game initialized with 70x70 characters and pokemon");
             drawGame();
         }
         
