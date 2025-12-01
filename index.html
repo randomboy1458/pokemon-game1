@@ -256,24 +256,33 @@
             z-index: 5;
         }
 
+        /* Updated popup styles */
         .final-message-popup {
             position: absolute;
-            top: 50%;
+            top: 25%; /* Positioned above cake */
             left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            border: 4px solid #f1c40f;
+            transform: translate(-50%, 0);
+            background: rgba(0, 0, 0, 0.95);
+            border: 4px solid #e74c3c; /* Red border for love messages */
             border-radius: 15px;
-            padding: 30px;
+            padding: 25px 35px;
             color: white;
             font-size: 32px;
             font-weight: bold;
             text-align: center;
-            z-index: 35; /* Higher than cake */
+            z-index: 45; /* HIGHEST - Above everything */
             display: none;
             text-transform: uppercase;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-            pointer-events: none; /* Allow clicks through to cake */
+            box-shadow: 0 0 30px rgba(231, 76, 60, 0.5);
+            min-width: 300px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 20px rgba(231, 76, 60, 0.5); }
+            50% { box-shadow: 0 0 40px rgba(231, 76, 60, 0.8); }
+            100% { box-shadow: 0 0 20px rgba(231, 76, 60, 0.5); }
         }
 
         .cake-container {
@@ -285,20 +294,21 @@
             display: none;
             justify-content: center;
             align-items: center;
-            z-index: 30;
-            background: rgba(0, 0, 0, 0.85); /* Dark semi-transparent background */
+            z-index: 40; /* Below popups, above canvas */
+            background: rgba(0, 0, 0, 0.9); /* Dark background */
         }
 
         .cake-image {
-            max-width: 80%;
-            max-height: 70%;
+            max-width: 85%;
+            max-height: 75%;
             object-fit: contain;
+            z-index: 40; /* Same as container */
             animation: float 3s ease-in-out infinite;
         }
 
         @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-15px) scale(1.02); }
         }
 
         @media (max-width: 600px) {
@@ -315,17 +325,14 @@
 
             .final-message-popup {
                 font-size: 24px;
-                padding: 20px;
-                top: 30%; /* Higher position on mobile for better visibility */
+                padding: 20px 25px;
+                min-width: 250px;
+                top: 20%; /* Slightly higher on mobile */
             }
 
             .cake-image {
-                max-width: 90%;
-                max-height: 60%;
-            }
-
-            .cake-container {
-                background: rgba(0, 0, 0, 0.9); /* Darker background on mobile */
+                max-width: 95%;
+                max-height: 65%;
             }
         }
     </style>
@@ -406,33 +413,36 @@
         const catchBtn = document.getElementById('catchBtn');
         const resetBtn = document.getElementById('resetBtn');
         
-        // Game images - FIXED: Removed heart image from canvas drawing
+        // Game images - ADDED HEART BACK
         const images = {
             map: new Image(),
             player: new Image(),
             pokemons: [
                 new Image(), new Image(), new Image(), new Image(), new Image()
             ],
+            heart: new Image(), // HEART IS BACK
             cake: new Image()
         };
 
         // Audio - configure for longer playback
         const audio = new Audio('audio/celebration.mp3');
-        audio.loop = true; // Make the audio loop to ensure it plays long enough
+        audio.loop = true;
 
-        // Store processed images - FIXED: No heart in processed images
+        // Store processed images - ADDED HEART BACK
         const processedImages = {
             player: null,
             pokemons: [null, null, null, null, null],
+            heart: null, // HEART IS BACK
             cake: null
         };
 
-        // Large sizes for maximum visibility on 600x400 map
-        const CHARACTER_SIZE = 70;      // 70x70 pixels for player
-        const POKEMON_SIZE = 70;        // 70x70 pixels for pokemon
-        const PLAYER_SPEED = 5;         // Faster movement for larger map
+        // Large sizes for maximum visibility
+        const CHARACTER_SIZE = 70;
+        const POKEMON_SIZE = 70;
+        const HEART_SIZE = 80; // Size for heart on canvas
+        const PLAYER_SPEED = 5;
         
-        // Game state - FIXED: Removed heart from game state
+        // Game state - ADDED HEART BACK
         const gameState = {
             player: {
                 x: 300,
@@ -443,12 +453,13 @@
                 direction: 'down'
             },
             pokemons: [],
+            heart: null, // HEART IS BACK
             caughtPokemons: 0,
             steps: 0,
             allPokemonCaught: false,
             heartSpawned: false,
             messages: [
-                "You caught Pikachu! It's super cute and ready to join your team!",
+                ".",
                 "Charmander is now yours! Its fiery tail will light your way!",
                 "Squirtle joined your team! Get ready for some water adventures!",
                 "Bulbasaur is caught! This grass-type Pokémon is a loyal companion!",
@@ -477,7 +488,7 @@
                 const originalWidth = image.naturalWidth;
                 const originalHeight = image.naturalHeight;
                 
-                console.log(`Processing image with background removal: ${originalWidth}x${originalHeight} -> ${targetSize}x${targetSize}`);
+                console.log(`Processing image: ${originalWidth}x${originalHeight} -> ${targetSize}x${targetSize}`);
                 
                 const canvas = document.createElement('canvas');
                 canvas.width = targetSize;
@@ -513,9 +524,9 @@
 
                     // Remove white and light backgrounds with threshold
                     const isWhite = red > 220 && green > 220 && blue > 220;
-                    const isLight = red > 180 && green > 180 && blue > 180;
+                    const isLight = red > 180 && green > 180 && blue > 180 && alpha > 100;
                     
-                    if (isWhite || isLight && alpha > 100) {
+                    if (isWhite || isLight) {
                         data[i + 3] = 0; // Set alpha to transparent
                     }
                 }
@@ -524,11 +535,11 @@
 
                 const processedImage = new Image();
                 processedImage.onload = () => {
-                    console.log(`Successfully processed image with background removal to ${targetSize}x${targetSize}`);
+                    console.log(`Successfully processed image to ${targetSize}x${targetSize}`);
                     resolve(processedImage);
                 };
                 processedImage.onerror = () => {
-                    console.error('Failed to process image with background removal');
+                    console.error('Failed to process image');
                     resolve(image); // Fallback to original image
                 };
                 processedImage.src = canvas.toDataURL('image/png');
@@ -538,18 +549,18 @@
         // Load images
         function loadImages() {
             let loadedCount = 0;
-            const totalImages = 8; // Map, player, 5 pokemon, cake
+            const totalImages = 9; // Map, player, 5 pokemon, heart, cake
             
             function imageLoaded() {
                 loadedCount++;
-                console.log(`Loaded ${loadedCount}/${totalImages} images - Size: ${this.naturalWidth}x${this.naturalHeight}`);
+                console.log(`Loaded ${loadedCount}/${totalImages} images`);
                 
                 if (loadedCount === totalImages) {
                     processAllImages();
                 }
             }
             
-            // Load map image (no background removal needed for map)
+            // Load map image
             images.map.onload = imageLoaded;
             images.map.onerror = () => {
                 console.error('Failed to load map image');
@@ -575,6 +586,14 @@
                 images.pokemons[i].src = `images/pokemon${i+1}.png`;
             }
 
+            // Load heart image
+            images.heart.onload = imageLoaded;
+            images.heart.onerror = () => {
+                console.error('Failed to load heart image');
+                imageLoaded();
+            };
+            images.heart.src = 'images/heart.png';
+
             // Load cake image
             images.cake.onload = imageLoaded;
             images.cake.onerror = () => {
@@ -584,27 +603,29 @@
             images.cake.src = 'images/cake.png';
         }
 
-        // Process all images to exact sizes WITH white background removal
+        // Process all images to exact sizes
         async function processAllImages() {
-            loading.textContent = "Processing images with background removal...";
+            loading.textContent = "Processing images...";
 
             try {
-                // Process ALL images with white background removal
+                // Process player
                 processedImages.player = await processImage(images.player, CHARACTER_SIZE);
 
-                // Process pokemon images with white background removal
+                // Process pokemon images
                 for (let i = 0; i < 5; i++) {
                     processedImages.pokemons[i] = await processImage(images.pokemons[i], POKEMON_SIZE);
                 }
 
-                // Process cake image (no specific size needed since it will be resized by CSS)
-                const CANDLE_SIZE = 200; // Process at higher resolution for better quality
-                processedImages.cake = await processImage(images.cake, CANDLE_SIZE);
+                // Process heart image
+                processedImages.heart = await processImage(images.heart, HEART_SIZE);
+
+                // Process cake image at higher resolution
+                processedImages.cake = await processImage(images.cake, 300);
 
                 loading.style.display = 'none';
                 initGame();
             } catch (error) {
-                console.error('Error processing images with background removal:', error);
+                console.error('Error processing images:', error);
                 loading.textContent = "Error loading images";
             }
         }
@@ -617,6 +638,7 @@
             gameState.caughtPokemons = 0;
             gameState.steps = 0;
             gameState.pokemons = [];
+            gameState.heart = null; // Reset heart
             gameState.allPokemonCaught = false;
             gameState.heartSpawned = false;
             gameState.celebrationActive = false;
@@ -629,6 +651,9 @@
             cakeContainer.style.display = 'none';
             finalMessagePopup.style.display = 'none';
             
+            // Show canvas
+            canvas.style.display = 'block';
+            
             // Reset buttons
             openBtn.style.display = 'none';
             catchBtn.style.display = 'block';
@@ -640,19 +665,36 @@
             // Reset pokeballs
             pokeballs.forEach(ball => ball.classList.remove('caught'));
             
-            // Create pokemons with exact sizes (70x70)
+            // Create pokemons
             for (let i = 0; i < 5; i++) {
+                let overlap;
+                let x, y;
+                do {
+                    overlap = false;
+                    x = Math.random() * (canvas.width - POKEMON_SIZE);
+                    y = Math.random() * (canvas.height - POKEMON_SIZE);
+                    
+                    // Check for overlap with existing pokemons
+                    for (let pokemon of gameState.pokemons) {
+                        if (Math.abs(x - pokemon.x) < POKEMON_SIZE * 1.5 && 
+                            Math.abs(y - pokemon.y) < POKEMON_SIZE * 1.5) {
+                            overlap = true;
+                            break;
+                        }
+                    }
+                } while (overlap);
+                
                 gameState.pokemons.push({
                     id: i,
-                    x: Math.random() * (canvas.width - POKEMON_SIZE),
-                    y: Math.random() * (canvas.height - POKEMON_SIZE),
+                    x: x,
+                    y: y,
                     width: POKEMON_SIZE,
                     height: POKEMON_SIZE,
                     caught: false
                 });
             }
             
-            console.log("Game initialized with background-removed images");
+            console.log("Game initialized");
             drawGame();
         }
         
@@ -661,7 +703,9 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             // Draw map
-            ctx.drawImage(images.map, 0, 0, canvas.width, canvas.height);
+            if (images.map.complete) {
+                ctx.drawImage(images.map, 0, 0, canvas.width, canvas.height);
+            }
             
             // Draw pokemons
             gameState.pokemons.forEach(pokemon => {
@@ -675,6 +719,17 @@
                     );
                 }
             });
+            
+            // Draw heart if spawned
+            if (gameState.heart && processedImages.heart) {
+                ctx.drawImage(
+                    processedImages.heart,
+                    Math.round(gameState.heart.x),
+                    Math.round(gameState.heart.y),
+                    gameState.heart.width,
+                    gameState.heart.height
+                );
+            }
             
             // Draw player
             if (processedImages.player) {
@@ -712,22 +767,18 @@
             gameState.steps++;
             stepCount.textContent = gameState.steps;
             
-            // Check if player is near center (for heart trigger)
-            if (gameState.allPokemonCaught && !gameState.heartSpawned) {
-                const centerX = canvas.width / 2;
-                const centerY = canvas.height / 2;
-                const distance = Math.sqrt(Math.pow(p.x + p.width/2 - centerX, 2) + Math.pow(p.y + p.height/2 - centerY, 2));
-                
-                if (distance < 50) {
-                    spawnHeart();
+            drawGame();
+            
+            // Check for heart collision if heart exists
+            if (gameState.heart) {
+                if (checkHeartCollision()) {
+                    openBtn.style.display = 'block';
+                    catchBtn.style.display = 'none';
+                } else {
+                    openBtn.style.display = 'none';
+                    catchBtn.style.display = 'block';
                 }
             }
-            
-            // Show open button when heart is spawned
-            openBtn.style.display = gameState.heartSpawned ? 'block' : 'none';
-            catchBtn.style.display = gameState.heartSpawned ? 'none' : 'block';
-            
-            drawGame();
         }
         
         // Check for pokemon collision
@@ -747,6 +798,19 @@
             
             return null;
         }
+
+        // Check for heart collision
+        function checkHeartCollision() {
+            const p = gameState.player;
+            const heart = gameState.heart;
+            
+            if (!heart) return false;
+            
+            return (p.x < heart.x + heart.width &&
+                    p.x + p.width > heart.x &&
+                    p.y < heart.y + heart.height &&
+                    p.y + p.height > heart.y);
+        }
         
         // Catch pokemon
         function catchPokemon() {
@@ -762,37 +826,69 @@
                 showMessage(gameState.messages[pokemon.id]);
                 drawGame();
                 
-                if (gameState.caughtPokemons === 5) {
-                    gameState.allPokemonCaught = true;
-                    showMessage("You caught all Pokémon! Go to the center of the map to reveal the special surprise!");
+                if (gameState.caughtPokemons === 5 && !gameState.heartSpawned) {
+                    spawnHeart();
                 }
             } else {
                 showMessage("No Pokémon nearby to catch! Get closer to a Pokémon first.");
             }
         }
 
-        // Spawn heart (which triggers the cake celebration)
+        // Spawn heart in the middle of the map
         function spawnHeart() {
+            gameState.allPokemonCaught = true;
             gameState.heartSpawned = true;
-            openBtn.style.display = 'block';
-            catchBtn.style.display = 'none';
             
-            showMessage("You found a special heart! Click 'OPEN' to reveal your surprise!");
+            // Place heart in the center
+            gameState.heart = {
+                x: canvas.width / 2 - HEART_SIZE / 2,
+                y: canvas.height / 2 - HEART_SIZE / 2,
+                width: HEART_SIZE,
+                height: HEART_SIZE
+            };
+            
+            showMessage("A special heart has appeared in the center of the map! Go to the heart and click 'OPEN'!");
             drawGame();
         }
 
-        // Open heart (start cake celebration)
+        // Open heart
         function openHeart() {
-            if (gameState.heartSpawned) {
-                startCakeCelebration();
+            if (gameState.heart && checkHeartCollision()) {
+                showFinalMessage();
             }
+        }
+
+        // Show final scrollable message
+        function showFinalMessage() {
+            messageBox.classList.add('scrollable');
+            messageText.innerHTML = `
+                <p style="margin-bottom: 15px; text-align: center; font-weight: bold;">Your Special Message:</p>
+                <p style="margin-bottom: 20px;">${gameState.finalMessage}</p>
+            `;
+            
+            // Create love button
+            const loveButton = document.createElement('button');
+            loveButton.textContent = 'I LOVE YOU';
+            loveButton.className = 'love-button';
+            loveButton.onclick = startCakeCelebration;
+            
+            // Clear existing buttons and add new one
+            const existingButton = messageBox.querySelector('#closeMessage');
+            if (existingButton) {
+                messageBox.removeChild(existingButton);
+            }
+            messageBox.appendChild(loveButton);
+            
+            messageBox.style.display = 'block';
         }
 
         // Start cake celebration
         function startCakeCelebration() {
+            messageBox.style.display = 'none';
+            gameState.celebrationActive = true;
+            
             // Hide canvas and show cake container
             canvas.style.display = 'none';
-            messageBox.style.display = 'none';
             cakeContainer.style.display = 'flex';
             
             // Set cake image
@@ -803,7 +899,9 @@
             audio.play().catch(e => console.log('Audio play failed:', e));
             
             // Start showing love messages above the cake
-            showLoveMessages(0);
+            setTimeout(() => {
+                showLoveMessages(0);
+            }, 1000);
         }
 
         // Show love messages in sequence
@@ -812,28 +910,35 @@
                 finalMessagePopup.textContent = gameState.loveMessages[index];
                 finalMessagePopup.style.display = 'block';
                 
-                // Position popup above the cake
-                const cakeRect = cakeContainer.getBoundingClientRect();
-                const popupTop = window.innerHeight * 0.2; // 20% from top on mobile
-                finalMessagePopup.style.top = `${popupTop}px`;
-                finalMessagePopup.style.left = '50%';
-                finalMessagePopup.style.transform = 'translateX(-50%)';
+                // Add fade-in effect
+                finalMessagePopup.style.opacity = '0';
+                finalMessagePopup.style.transform = 'translate(-50%, 0) scale(0.8)';
                 
                 setTimeout(() => {
-                    finalMessagePopup.style.display = 'none';
+                    finalMessagePopup.style.transition = 'all 0.3s ease';
+                    finalMessagePopup.style.opacity = '1';
+                    finalMessagePopup.style.transform = 'translate(-50%, 0) scale(1)';
+                }, 10);
+                
+                setTimeout(() => {
+                    // Fade out
+                    finalMessagePopup.style.opacity = '0';
+                    finalMessagePopup.style.transform = 'translate(-50%, 0) scale(0.8)';
+                    
                     setTimeout(() => {
-                        showLoveMessages(index + 1);
-                    }, 200);
+                        finalMessagePopup.style.display = 'none';
+                        setTimeout(() => {
+                            showLoveMessages(index + 1);
+                        }, 300);
+                    }, 300);
                 }, 1500);
             } else {
                 // All messages shown, wait 3 seconds with audio still playing
                 setTimeout(() => {
                     finalMessagePopup.textContent = "FOREVER AND ALWAYS";
                     finalMessagePopup.style.display = 'block';
-                    
-                    // Position in center for final message
-                    finalMessagePopup.style.top = '50%';
-                    finalMessagePopup.style.transform = 'translate(-50%, -50%)';
+                    finalMessagePopup.style.opacity = '1';
+                    finalMessagePopup.style.transform = 'translate(-50%, 0) scale(1)';
                     
                     // Stop audio after 3 more seconds
                     setTimeout(() => {
@@ -901,7 +1006,7 @@
             if (e.key === 'ArrowLeft') movePlayer('left');
             if (e.key === 'ArrowRight') movePlayer('right');
             if (e.key === ' ' || e.key === 'Enter') {
-                if (openBtn.style.display === 'block') {
+                if (gameState.heartSpawned && openBtn.style.display === 'block') {
                     openHeart();
                 } else {
                     catchPokemon();
