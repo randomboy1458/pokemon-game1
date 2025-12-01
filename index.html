@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -163,7 +164,7 @@
             transform: translateX(-50%);
             width: 90%;
             padding: 15px;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.9);
             border: 3px solid #f1c40f;
             border-radius: 10px;
             text-align: center;
@@ -171,6 +172,12 @@
             line-height: 1.4;
             z-index: 10;
             display: none;
+        }
+
+        .message-box.scrollable {
+            max-height: 300px;
+            overflow-y: auto;
+            text-align: left;
         }
 
         .message-box button {
@@ -182,6 +189,14 @@
             color: white;
             font-family: 'Courier New', monospace;
             cursor: pointer;
+        }
+
+        .message-box .love-button {
+            background: #e74c3c;
+            font-weight: bold;
+            font-size: 18px;
+            padding: 12px 24px;
+            margin-top: 20px;
         }
 
         .pokemon-caught {
@@ -240,6 +255,40 @@
             z-index: 5;
         }
 
+        .final-message-popup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 4px solid #f1c40f;
+            border-radius: 15px;
+            padding: 30px;
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+            text-align: center;
+            z-index: 25; /* Higher than cake */
+            display: none;
+            text-transform: uppercase;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .heart-image {
+            position: absolute;
+            z-index: 15;
+            display: none;
+        }
+
+        .cake-image {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 20; /* Higher than heart but lower than popups */
+            display: none;
+        }
+
         @media (max-width: 600px) {
             .game-area {
                 width: 100%;
@@ -250,6 +299,11 @@
                 width: 50px;
                 height: 50px;
                 font-size: 20px;
+            }
+
+            .final-message-popup {
+                font-size: 24px;
+                padding: 20px;
             }
         }
     </style>
@@ -280,6 +334,11 @@
                 <p id="messageText"></p>
                 <button id="closeMessage">OK</button>
             </div>
+
+            <img id="heartImage" class="heart-image" alt="Heart">
+            <img id="cakeImage" class="cake-image" alt="Cake">
+            
+            <div class="final-message-popup" id="finalMessagePopup"></div>
         </div>
         
         <div class="controls">
@@ -292,6 +351,7 @@
             
             <div class="action-buttons">
                 <button id="catchBtn">CATCH</button>
+                <button id="openBtn" style="display: none;">OPEN</button>
                 <button id="resetBtn">RESET</button>
             </div>
         </div>
@@ -310,6 +370,10 @@
         const stepCount = document.getElementById('stepCount');
         const pokeballs = document.querySelectorAll('.pokeball');
         const loading = document.getElementById('loading');
+        const heartImage = document.getElementById('heartImage');
+        const cakeImage = document.getElementById('cakeImage');
+        const finalMessagePopup = document.getElementById('finalMessagePopup');
+        const openBtn = document.getElementById('openBtn');
         
         // Control buttons
         const upBtn = document.getElementById('upBtn');
@@ -325,18 +389,28 @@
             player: new Image(),
             pokemons: [
                 new Image(), new Image(), new Image(), new Image(), new Image()
-            ]
+            ],
+            heart: new Image(),
+            cake: new Image()
         };
+
+        // Audio - configure for longer playback
+        const audio = new Audio('audio/celebration.mp3');
+        audio.loop = true; // Make the audio loop to ensure it plays long enough
 
         // Store processed images
         const processedImages = {
             player: null,
-            pokemons: [null, null, null, null, null]
+            pokemons: [null, null, null, null, null],
+            heart: null,
+            cake: null
         };
 
         // Large sizes for maximum visibility on 600x400 map
         const CHARACTER_SIZE = 70;      // 70x70 pixels for player
         const POKEMON_SIZE = 70;        // 70x70 pixels for pokemon
+        const HEART_SIZE = 80;          // 80x80 pixels for heart (increased from 60)
+        const CAKE_SIZE = 90;           // 90x90 pixels for cake (new size)
         const PLAYER_SPEED = 5;         // Faster movement for larger map
         
         // Game state
@@ -350,25 +424,42 @@
                 direction: 'down'
             },
             pokemons: [],
+            heart: null,
             caughtPokemons: 0,
             steps: 0,
+            allPokemonCaught: false,
+            heartSpawned: false,
             messages: [
-                "ON THIS SPECIAL DAY OF YOURS, I WISH A REALLY REALLY REALLY HAPPY BIRTHDAY AND I HOPE YOU HAVE SUCH A BLAST TODAY AND YOU ENJOY EVERY MOMENT NOT JUST TODAY BUT FOREVER.",
-                "I LOVE YOU TODAY TOMORROW AND FOREVER, NOT SAYING THIS OUT OF HABIT BUT SAYING THIS TO REMIND YOU THAT YOU HAVE YOUR BIGGEST FAN IN THE DAYS OF WORSE OR THE BEST CHEERING FOR YOU AT THE BACK STAGE. THE ONE WHO LOVES ALL YOUR ACHIEVEMENTS AND THE ONE WHO WOULD FIGHT THE WORLD WITHOUT A SECOND THOUGHT!!",
-                "I LOVE YOU SO SO SO SO SO SO SO SO SO SO SO SO SO SO SO SO SO SO SO SO SO SO MUCHHHHH THAT I LOVE YOU THE MOST AND MORE.. YEIKS I WIN THAT BET BABBYYYYYYYY!! NOT GONNA LET YOU WIN THIS ONE, EVER. OLEEEEEEEE AND A HAPPY BIRTHDAYYYYYYYY",
-                "OH AND IF I HAVEN'T MENTIONED ALREADY, YOU LOOK SUPER PRETTY AND SUPER BEAUTIFUL AND I AM PROBABLY ON THE CALL WATCHING YOU AND YOUR BEAUTIFUL EYES AND FACE AND BODY... I MEAN THATS MY RIGHTS YOU KNOW!!! (YOU LOOK AMAZING AS ALWAYS)",
-                "ON THIS SPECIAL DAY I WANNA TELL YOU HOW MUCH YOU MEAN TO ME. YOUR SMILE THAT FADES THE BAD DAYS IN MY LIFE, YOUR GIGGLE THAT GETS ME OUT OF ANY PAIN, YOUR EYES THAT MAKE ME APPRECIATE HAVING EYES (I KNOW ITS A GOOD ONE, DONT BE SHY JUST APPRECIATE IT. DO IT) I LOVE EVERYTHING IN YOU AS IF IT WAS TRULY MADE FOR ME. AND I LOVE YOU THE MOST. I KEEP FALLING HARDER AND HARDER FOR YOU EVERYDAY AND I LOVE THIS FEELING OF FALLING AND I WISH TO KEEP FALLING FOREVER, TE QUIERO MI VIDA <3!!"
+                "You caught Pikachu! It's super cute and ready to join your team!",
+                "Charmander is now yours! Its fiery tail will light your way!",
+                "Squirtle joined your team! Get ready for some water adventures!",
+                "Bulbasaur is caught! This grass-type Pokémon is a loyal companion!",
+                "Jigglypuff is now yours! Get ready for some soothing lullabies!"
             ],
-            pokemonNames: ["Pikachu", "Charizard", "lucario", "infernape", "machamp"]
+            pokemonNames: ["Pikachu", "Charmander", "Squirtle", "Bulbasaur", "Jigglypuff"],
+            finalMessage: "since you have read all my messages, you deserve a final one more.. its to show you that you are not just seen but hear, not just heard but valued, not just valued but loved, not just loved but desired, not just desired but adored, not just adored but invested on, not just invested on but taken care of, not just taken care of but talked about , not just talked about but preferred, not just preferred but chosen, not just chosen but prayed for and finally not just prayed for but seen. in this truly eternity loop you will always find yourself and me, repeating it over and over again.",
+            loveMessages: [
+                "I LOVE YOU",
+                "te amo", 
+                "मुझे तुमसे प्यार है",
+                "t'estime",
+                "Je vous aime",
+                "eu te amo",
+                "Ich liebe dich",
+                "ti amo",
+                "愛してます",
+                "أحبك"
+            ],
+            celebrationActive: false
         };
 
-        // Remove white background and resize to exact size
+        // Enhanced function to resize AND remove white backgrounds for ALL images
         function processImage(image, targetSize) {
             return new Promise((resolve) => {
                 const originalWidth = image.naturalWidth;
                 const originalHeight = image.naturalHeight;
                 
-                console.log(`Processing image: ${originalWidth}x${originalHeight} -> ${targetSize}x${targetSize}`);
+                console.log(`Processing image with background removal: ${originalWidth}x${originalHeight} -> ${targetSize}x${targetSize}`);
                 
                 const canvas = document.createElement('canvas');
                 canvas.width = targetSize;
@@ -376,18 +467,33 @@
                 const ctx = canvas.getContext('2d');
                 ctx.imageSmoothingEnabled = false;
 
-                // Draw and scale image to fit exactly in targetSize
-                ctx.drawImage(image, 0, 0, targetSize, targetSize);
+                // Clear with transparent background
+                ctx.clearRect(0, 0, targetSize, targetSize);
+                
+                // Calculate scaling to maintain aspect ratio
+                const scale = Math.min(targetSize / image.naturalWidth, targetSize / image.naturalHeight);
+                const scaledWidth = image.naturalWidth * scale;
+                const scaledHeight = image.naturalHeight * scale;
+                
+                // Center the image
+                const x = (targetSize - scaledWidth) / 2;
+                const y = (targetSize - scaledHeight) / 2;
+                
+                // Draw the original image
+                ctx.drawImage(image, x, y, scaledWidth, scaledHeight);
 
+                // Get image data for processing
                 const imageData = ctx.getImageData(0, 0, targetSize, targetSize);
                 const data = imageData.data;
 
-                // Remove white and light backgrounds
+                // Convert white and light pixels to transparent
                 for (let i = 0; i < data.length; i += 4) {
                     const red = data[i];
                     const green = data[i + 1];
                     const blue = data[i + 2];
+                    const alpha = data[i + 3];
 
+                    // Remove white and light backgrounds with threshold
                     const isWhite = red > 220 && green > 220 && blue > 220;
                     const isLight = red > 180 && green > 180 && blue > 180;
                     
@@ -400,17 +506,21 @@
 
                 const processedImage = new Image();
                 processedImage.onload = () => {
-                    console.log(`Successfully processed image to ${targetSize}x${targetSize}`);
+                    console.log(`Successfully processed image with background removal to ${targetSize}x${targetSize}`);
                     resolve(processedImage);
                 };
-                processedImage.src = canvas.toDataURL();
+                processedImage.onerror = () => {
+                    console.error('Failed to process image with background removal');
+                    resolve(image); // Fallback to original image
+                };
+                processedImage.src = canvas.toDataURL('image/png');
             });
         }
         
         // Load images
         function loadImages() {
             let loadedCount = 0;
-            const totalImages = 7;
+            const totalImages = 9; // Updated for new images
             
             function imageLoaded() {
                 loadedCount++;
@@ -421,7 +531,7 @@
                 }
             }
             
-            // Load map image
+            // Load map image (no background removal needed for map)
             images.map.onload = imageLoaded;
             images.map.onerror = () => {
                 console.error('Failed to load map image');
@@ -446,25 +556,47 @@
                 };
                 images.pokemons[i].src = `images/pokemon${i+1}.png`;
             }
+
+            // Load heart image
+            images.heart.onload = imageLoaded;
+            images.heart.onerror = () => {
+                console.error('Failed to load heart image');
+                imageLoaded();
+            };
+            images.heart.src = 'images/heart.png';
+
+            // Load cake image
+            images.cake.onload = imageLoaded;
+            images.cake.onerror = () => {
+                console.error('Failed to load cake image');
+                imageLoaded();
+            };
+            images.cake.src = 'images/cake.png';
         }
 
-        // Process all images to exact sizes
+        // Process all images to exact sizes WITH white background removal
         async function processAllImages() {
-            loading.textContent = "Processing images to 70x70...";
+            loading.textContent = "Processing images with background removal...";
 
             try {
-                // Process player image to exact size
+                // Process ALL images with white background removal
                 processedImages.player = await processImage(images.player, CHARACTER_SIZE);
 
-                // Process pokemon images to exact size
+                // Process pokemon images with white background removal
                 for (let i = 0; i < 5; i++) {
                     processedImages.pokemons[i] = await processImage(images.pokemons[i], POKEMON_SIZE);
                 }
 
+                // Process heart image to 80x80 WITH white background removal
+                processedImages.heart = await processImage(images.heart, HEART_SIZE);
+
+                // Process cake image to 90x90 WITH white background removal
+                processedImages.cake = await processImage(images.cake, CAKE_SIZE);
+
                 loading.style.display = 'none';
                 initGame();
             } catch (error) {
-                console.error('Error processing images:', error);
+                console.error('Error processing images with background removal:', error);
                 loading.textContent = "Error loading images";
             }
         }
@@ -477,6 +609,23 @@
             gameState.caughtPokemons = 0;
             gameState.steps = 0;
             gameState.pokemons = [];
+            gameState.heart = null;
+            gameState.allPokemonCaught = false;
+            gameState.heartSpawned = false;
+            gameState.celebrationActive = false;
+            
+            // Stop audio if playing
+            audio.pause();
+            audio.currentTime = 0;
+            
+            // Hide heart and cake
+            heartImage.style.display = 'none';
+            cakeImage.style.display = 'none';
+            finalMessagePopup.style.display = 'none';
+            
+            // Reset buttons
+            openBtn.style.display = 'none';
+            catchBtn.style.display = 'block';
             
             // Update UI
             caughtCount.textContent = gameState.caughtPokemons;
@@ -497,7 +646,7 @@
                 });
             }
             
-            console.log("Game initialized with 70x70 characters and pokemon");
+            console.log("Game initialized with background-removed images");
             drawGame();
         }
         
@@ -520,6 +669,17 @@
                     );
                 }
             });
+            
+            // Draw heart if spawned
+            if (gameState.heart && processedImages.heart) {
+                ctx.drawImage(
+                    processedImages.heart,
+                    Math.round(gameState.heart.x),
+                    Math.round(gameState.heart.y),
+                    gameState.heart.width,
+                    gameState.heart.height
+                );
+            }
             
             // Draw player
             if (processedImages.player) {
@@ -557,6 +717,15 @@
             gameState.steps++;
             stepCount.textContent = gameState.steps;
             
+            // Check for heart collision
+            if (gameState.heart && checkHeartCollision()) {
+                openBtn.style.display = 'block';
+                catchBtn.style.display = 'none';
+            } else {
+                openBtn.style.display = 'none';
+                catchBtn.style.display = 'block';
+            }
+            
             drawGame();
         }
         
@@ -577,6 +746,19 @@
             
             return null;
         }
+
+        // Check for heart collision
+        function checkHeartCollision() {
+            const p = gameState.player;
+            const heart = gameState.heart;
+            
+            if (!heart) return false;
+            
+            return (p.x < heart.x + heart.width &&
+                    p.x + p.width > heart.x &&
+                    p.y < heart.y + heart.height &&
+                    p.y + p.height > heart.y);
+        }
         
         // Catch pokemon
         function catchPokemon() {
@@ -592,19 +774,135 @@
                 showMessage(gameState.messages[pokemon.id]);
                 drawGame();
                 
-                if (gameState.caughtPokemons === 5) {
-                    setTimeout(() => {
-                        showMessage("Congratulations! You've caught all the Pokémon! You are a true Pokémon Master!");
-                    }, 1500);
+                if (gameState.caughtPokemons === 5 && !gameState.heartSpawned) {
+                    spawnHeart();
                 }
             } else {
                 showMessage("No Pokémon nearby to catch! Get closer to a Pokémon first.");
             }
         }
+
+        // Spawn heart in the middle of the map
+        function spawnHeart() {
+            gameState.allPokemonCaught = true;
+            gameState.heartSpawned = true;
+            
+            gameState.heart = {
+                x: canvas.width / 2 - HEART_SIZE / 2,
+                y: canvas.height / 2 - HEART_SIZE / 2,
+                width: HEART_SIZE,
+                height: HEART_SIZE
+            };
+            
+            // Show heart image on canvas
+            heartImage.style.display = 'block';
+            heartImage.style.width = HEART_SIZE + 'px';
+            heartImage.style.height = HEART_SIZE + 'px';
+            heartImage.style.left = gameState.heart.x + 'px';
+            heartImage.style.top = gameState.heart.y + 'px';
+            heartImage.src = processedImages.heart.src;
+            
+            drawGame();
+        }
+
+        // Open heart
+        function openHeart() {
+            if (checkHeartCollision()) {
+                showFinalMessage();
+            }
+        }
+
+        // Show final scrollable message
+        function showFinalMessage() {
+            messageBox.classList.add('scrollable');
+            messageText.innerHTML = `
+                <p style="margin-bottom: 15px; text-align: center; font-weight: bold;">Your Special Message:</p>
+                <p style="margin-bottom: 20px;">${gameState.finalMessage}</p>
+            `;
+            
+            // Create love button
+            const loveButton = document.createElement('button');
+            loveButton.textContent = 'I LOVE YOU';
+            loveButton.className = 'love-button';
+            loveButton.onclick = startLoveCelebration;
+            
+            // Clear existing buttons and add new one
+            const existingButton = messageBox.querySelector('#closeMessage');
+            if (existingButton) {
+                messageBox.removeChild(existingButton);
+            }
+            messageBox.appendChild(loveButton);
+            
+            messageBox.style.display = 'block';
+        }
+
+        // Start love celebration
+        function startLoveCelebration() {
+            messageBox.style.display = 'none';
+            gameState.celebrationActive = true;
+            
+            // Show cake (90x90) in the center
+            cakeImage.style.display = 'block';
+            cakeImage.style.width = CAKE_SIZE + 'px';
+            cakeImage.style.height = CAKE_SIZE + 'px';
+            cakeImage.src = processedImages.cake.src;
+            
+            // Configure and play audio
+            audio.loop = true;
+            audio.play().catch(e => console.log('Audio play failed:', e));
+            
+            // Start showing love messages above the cake
+            showLoveMessages(0);
+        }
+
+        // Show love messages in sequence
+        function showLoveMessages(index) {
+            if (index < gameState.loveMessages.length) {
+                finalMessagePopup.textContent = gameState.loveMessages[index];
+                finalMessagePopup.style.display = 'block';
+                
+                setTimeout(() => {
+                    finalMessagePopup.style.display = 'none';
+                    setTimeout(() => {
+                        showLoveMessages(index + 1);
+                    }, 200);
+                }, 1500);
+            } else {
+                // All messages shown, wait 3 seconds with audio still playing
+                setTimeout(() => {
+                    finalMessagePopup.textContent = "FOREVER AND ALWAYS";
+                    finalMessagePopup.style.display = 'block';
+                    
+                    // Stop audio after 3 more seconds
+                    setTimeout(() => {
+                        audio.pause();
+                        audio.currentTime = 0;
+                        gameState.celebrationActive = false;
+                    }, 3000);
+                }, 500);
+            }
+        }
         
         // Show message
         function showMessage(message) {
+            messageBox.classList.remove('scrollable');
             messageText.textContent = message;
+            
+            // Reset to default OK button
+            const loveButton = messageBox.querySelector('.love-button');
+            if (loveButton) {
+                messageBox.removeChild(loveButton);
+            }
+            
+            const existingButton = messageBox.querySelector('#closeMessage');
+            if (!existingButton) {
+                const closeBtn = document.createElement('button');
+                closeBtn.textContent = 'OK';
+                closeBtn.id = 'closeMessage';
+                closeBtn.onclick = () => messageBox.style.display = 'none';
+                messageBox.appendChild(closeBtn);
+            }
+            
             messageBox.style.display = 'block';
         }
         
@@ -640,11 +938,20 @@
             if (e.key === 'ArrowDown') movePlayer('down');
             if (e.key === 'ArrowLeft') movePlayer('left');
             if (e.key === 'ArrowRight') movePlayer('right');
-            if (e.key === ' ' || e.key === 'Enter') catchPokemon();
+            if (e.key === ' ' || e.key === 'Enter') {
+                if (openBtn.style.display === 'block') {
+                    openHeart();
+                } else {
+                    catchPokemon();
+                }
+            }
         });
         
         // Catch button
         catchBtn.addEventListener('click', catchPokemon);
+        
+        // Open button
+        openBtn.addEventListener('click', openHeart);
         
         // Reset button
         resetBtn.addEventListener('click', initGame);
