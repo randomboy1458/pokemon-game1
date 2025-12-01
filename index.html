@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -268,25 +269,36 @@
             font-size: 32px;
             font-weight: bold;
             text-align: center;
-            z-index: 25; /* Higher than cake */
+            z-index: 35; /* Higher than cake */
             display: none;
             text-transform: uppercase;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            pointer-events: none; /* Allow clicks through to cake */
         }
 
-        .heart-image {
+        .cake-container {
             position: absolute;
-            z-index: 15;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 30;
+            background: rgba(0, 0, 0, 0.85); /* Dark semi-transparent background */
         }
 
         .cake-image {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 20; /* Higher than heart but lower than popups */
-            display: none;
+            max-width: 80%;
+            max-height: 70%;
+            object-fit: contain;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
         }
 
         @media (max-width: 600px) {
@@ -304,6 +316,16 @@
             .final-message-popup {
                 font-size: 24px;
                 padding: 20px;
+                top: 30%; /* Higher position on mobile for better visibility */
+            }
+
+            .cake-image {
+                max-width: 90%;
+                max-height: 60%;
+            }
+
+            .cake-container {
+                background: rgba(0, 0, 0, 0.9); /* Darker background on mobile */
             }
         }
     </style>
@@ -335,8 +357,9 @@
                 <button id="closeMessage">OK</button>
             </div>
 
-            <img id="heartImage" class="heart-image" alt="Heart">
-            <img id="cakeImage" class="cake-image" alt="Cake">
+            <div class="cake-container" id="cakeContainer">
+                <img id="cakeImage" class="cake-image" alt="Cake" crossorigin="anonymous">
+            </div>
             
             <div class="final-message-popup" id="finalMessagePopup"></div>
         </div>
@@ -370,7 +393,7 @@
         const stepCount = document.getElementById('stepCount');
         const pokeballs = document.querySelectorAll('.pokeball');
         const loading = document.getElementById('loading');
-        const heartImage = document.getElementById('heartImage');
+        const cakeContainer = document.getElementById('cakeContainer');
         const cakeImage = document.getElementById('cakeImage');
         const finalMessagePopup = document.getElementById('finalMessagePopup');
         const openBtn = document.getElementById('openBtn');
@@ -383,14 +406,13 @@
         const catchBtn = document.getElementById('catchBtn');
         const resetBtn = document.getElementById('resetBtn');
         
-        // Game images
+        // Game images - FIXED: Removed heart image from canvas drawing
         const images = {
             map: new Image(),
             player: new Image(),
             pokemons: [
                 new Image(), new Image(), new Image(), new Image(), new Image()
             ],
-            heart: new Image(),
             cake: new Image()
         };
 
@@ -398,22 +420,19 @@
         const audio = new Audio('audio/celebration.mp3');
         audio.loop = true; // Make the audio loop to ensure it plays long enough
 
-        // Store processed images
+        // Store processed images - FIXED: No heart in processed images
         const processedImages = {
             player: null,
             pokemons: [null, null, null, null, null],
-            heart: null,
             cake: null
         };
 
         // Large sizes for maximum visibility on 600x400 map
         const CHARACTER_SIZE = 70;      // 70x70 pixels for player
         const POKEMON_SIZE = 70;        // 70x70 pixels for pokemon
-        const HEART_SIZE = 80;          // 80x80 pixels for heart (increased from 60)
-        const CAKE_SIZE = 90;           // 90x90 pixels for cake (new size)
         const PLAYER_SPEED = 5;         // Faster movement for larger map
         
-        // Game state
+        // Game state - FIXED: Removed heart from game state
         const gameState = {
             player: {
                 x: 300,
@@ -424,7 +443,6 @@
                 direction: 'down'
             },
             pokemons: [],
-            heart: null,
             caughtPokemons: 0,
             steps: 0,
             allPokemonCaught: false,
@@ -497,7 +515,7 @@
                     const isWhite = red > 220 && green > 220 && blue > 220;
                     const isLight = red > 180 && green > 180 && blue > 180;
                     
-                    if (isWhite || isLight) {
+                    if (isWhite || isLight && alpha > 100) {
                         data[i + 3] = 0; // Set alpha to transparent
                     }
                 }
@@ -520,7 +538,7 @@
         // Load images
         function loadImages() {
             let loadedCount = 0;
-            const totalImages = 9; // Updated for new images
+            const totalImages = 8; // Map, player, 5 pokemon, cake
             
             function imageLoaded() {
                 loadedCount++;
@@ -557,14 +575,6 @@
                 images.pokemons[i].src = `images/pokemon${i+1}.png`;
             }
 
-            // Load heart image
-            images.heart.onload = imageLoaded;
-            images.heart.onerror = () => {
-                console.error('Failed to load heart image');
-                imageLoaded();
-            };
-            images.heart.src = 'images/heart.png';
-
             // Load cake image
             images.cake.onload = imageLoaded;
             images.cake.onerror = () => {
@@ -587,11 +597,9 @@
                     processedImages.pokemons[i] = await processImage(images.pokemons[i], POKEMON_SIZE);
                 }
 
-                // Process heart image to 80x80 WITH white background removal
-                processedImages.heart = await processImage(images.heart, HEART_SIZE);
-
-                // Process cake image to 90x90 WITH white background removal
-                processedImages.cake = await processImage(images.cake, CAKE_SIZE);
+                // Process cake image (no specific size needed since it will be resized by CSS)
+                const CANDLE_SIZE = 200; // Process at higher resolution for better quality
+                processedImages.cake = await processImage(images.cake, CANDLE_SIZE);
 
                 loading.style.display = 'none';
                 initGame();
@@ -609,7 +617,6 @@
             gameState.caughtPokemons = 0;
             gameState.steps = 0;
             gameState.pokemons = [];
-            gameState.heart = null;
             gameState.allPokemonCaught = false;
             gameState.heartSpawned = false;
             gameState.celebrationActive = false;
@@ -618,9 +625,8 @@
             audio.pause();
             audio.currentTime = 0;
             
-            // Hide heart and cake
-            heartImage.style.display = 'none';
-            cakeImage.style.display = 'none';
+            // Hide cake container and popup
+            cakeContainer.style.display = 'none';
             finalMessagePopup.style.display = 'none';
             
             // Reset buttons
@@ -670,17 +676,6 @@
                 }
             });
             
-            // Draw heart if spawned
-            if (gameState.heart && processedImages.heart) {
-                ctx.drawImage(
-                    processedImages.heart,
-                    Math.round(gameState.heart.x),
-                    Math.round(gameState.heart.y),
-                    gameState.heart.width,
-                    gameState.heart.height
-                );
-            }
-            
             // Draw player
             if (processedImages.player) {
                 ctx.drawImage(
@@ -717,14 +712,20 @@
             gameState.steps++;
             stepCount.textContent = gameState.steps;
             
-            // Check for heart collision
-            if (gameState.heart && checkHeartCollision()) {
-                openBtn.style.display = 'block';
-                catchBtn.style.display = 'none';
-            } else {
-                openBtn.style.display = 'none';
-                catchBtn.style.display = 'block';
+            // Check if player is near center (for heart trigger)
+            if (gameState.allPokemonCaught && !gameState.heartSpawned) {
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const distance = Math.sqrt(Math.pow(p.x + p.width/2 - centerX, 2) + Math.pow(p.y + p.height/2 - centerY, 2));
+                
+                if (distance < 50) {
+                    spawnHeart();
+                }
             }
+            
+            // Show open button when heart is spawned
+            openBtn.style.display = gameState.heartSpawned ? 'block' : 'none';
+            catchBtn.style.display = gameState.heartSpawned ? 'none' : 'block';
             
             drawGame();
         }
@@ -746,19 +747,6 @@
             
             return null;
         }
-
-        // Check for heart collision
-        function checkHeartCollision() {
-            const p = gameState.player;
-            const heart = gameState.heart;
-            
-            if (!heart) return false;
-            
-            return (p.x < heart.x + heart.width &&
-                    p.x + p.width > heart.x &&
-                    p.y < heart.y + heart.height &&
-                    p.y + p.height > heart.y);
-        }
         
         // Catch pokemon
         function catchPokemon() {
@@ -774,78 +762,41 @@
                 showMessage(gameState.messages[pokemon.id]);
                 drawGame();
                 
-                if (gameState.caughtPokemons === 5 && !gameState.heartSpawned) {
-                    spawnHeart();
+                if (gameState.caughtPokemons === 5) {
+                    gameState.allPokemonCaught = true;
+                    showMessage("You caught all Pokémon! Go to the center of the map to reveal the special surprise!");
                 }
             } else {
                 showMessage("No Pokémon nearby to catch! Get closer to a Pokémon first.");
             }
         }
 
-        // Spawn heart in the middle of the map
+        // Spawn heart (which triggers the cake celebration)
         function spawnHeart() {
-            gameState.allPokemonCaught = true;
             gameState.heartSpawned = true;
+            openBtn.style.display = 'block';
+            catchBtn.style.display = 'none';
             
-            gameState.heart = {
-                x: canvas.width / 2 - HEART_SIZE / 2,
-                y: canvas.height / 2 - HEART_SIZE / 2,
-                width: HEART_SIZE,
-                height: HEART_SIZE
-            };
-            
-            // Show heart image on canvas
-            heartImage.style.display = 'block';
-            heartImage.style.width = HEART_SIZE + 'px';
-            heartImage.style.height = HEART_SIZE + 'px';
-            heartImage.style.left = gameState.heart.x + 'px';
-            heartImage.style.top = gameState.heart.y + 'px';
-            heartImage.src = processedImages.heart.src;
-            
+            showMessage("You found a special heart! Click 'OPEN' to reveal your surprise!");
             drawGame();
         }
 
-        // Open heart
+        // Open heart (start cake celebration)
         function openHeart() {
-            if (checkHeartCollision()) {
-                showFinalMessage();
+            if (gameState.heartSpawned) {
+                startCakeCelebration();
             }
         }
 
-        // Show final scrollable message
-        function showFinalMessage() {
-            messageBox.classList.add('scrollable');
-            messageText.innerHTML = `
-                <p style="margin-bottom: 15px; text-align: center; font-weight: bold;">Your Special Message:</p>
-                <p style="margin-bottom: 20px;">${gameState.finalMessage}</p>
-            `;
-            
-            // Create love button
-            const loveButton = document.createElement('button');
-            loveButton.textContent = 'I LOVE YOU';
-            loveButton.className = 'love-button';
-            loveButton.onclick = startLoveCelebration;
-            
-            // Clear existing buttons and add new one
-            const existingButton = messageBox.querySelector('#closeMessage');
-            if (existingButton) {
-                messageBox.removeChild(existingButton);
-            }
-            messageBox.appendChild(loveButton);
-            
-            messageBox.style.display = 'block';
-        }
-
-        // Start love celebration
-        function startLoveCelebration() {
+        // Start cake celebration
+        function startCakeCelebration() {
+            // Hide canvas and show cake container
+            canvas.style.display = 'none';
             messageBox.style.display = 'none';
-            gameState.celebrationActive = true;
+            cakeContainer.style.display = 'flex';
             
-            // Show cake (90x90) in the center
-            cakeImage.style.display = 'block';
-            cakeImage.style.width = CAKE_SIZE + 'px';
-            cakeImage.style.height = CAKE_SIZE + 'px';
-            cakeImage.src = processedImages.cake.src;
+            // Set cake image
+            cakeImage.src = processedImages.cake ? processedImages.cake.src : images.cake.src;
             
             // Configure and play audio
             audio.loop = true;
@@ -861,6 +812,13 @@
                 finalMessagePopup.textContent = gameState.loveMessages[index];
                 finalMessagePopup.style.display = 'block';
                 
+                // Position popup above the cake
+                const cakeRect = cakeContainer.getBoundingClientRect();
+                const popupTop = window.innerHeight * 0.2; // 20% from top on mobile
+                finalMessagePopup.style.top = `${popupTop}px`;
+                finalMessagePopup.style.left = '50%';
+                finalMessagePopup.style.transform = 'translateX(-50%)';
+                
                 setTimeout(() => {
                     finalMessagePopup.style.display = 'none';
                     setTimeout(() => {
@@ -872,6 +830,10 @@
                 setTimeout(() => {
                     finalMessagePopup.textContent = "FOREVER AND ALWAYS";
                     finalMessagePopup.style.display = 'block';
+                    
+                    // Position in center for final message
+                    finalMessagePopup.style.top = '50%';
+                    finalMessagePopup.style.transform = 'translate(-50%, -50%)';
                     
                     // Stop audio after 3 more seconds
                     setTimeout(() => {
