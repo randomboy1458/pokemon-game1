@@ -696,9 +696,9 @@
             images.cake.src = 'images/cake.png';
         }
         
-        // Initialize game
+        // Initialize game with RANDOM pokemon positions
         function initGame() {
-            console.log("Initializing game...");
+            console.log("Initializing game with random positions...");
             
             // Reset game state
             gameState.player.x = 300 - CHARACTER_SIZE / 2;
@@ -729,24 +729,60 @@
             // Reset pokeballs
             pokeballs.forEach(ball => ball.classList.remove('caught'));
             
-            // Create pokemons
+            // Create pokemons with RANDOM positions (FIXED VERSION)
             for (let i = 0; i < 5; i++) {
-                let overlap;
                 let x, y;
-                do {
-                    overlap = false;
+                let isValidPosition = false;
+                let attempts = 0;
+                const maxAttempts = 50; // Safety limit to prevent infinite loop
+                
+                while (!isValidPosition && attempts < maxAttempts) {
+                    attempts++;
+                    
+                    // Generate random position within bounds
                     x = Math.random() * (canvas.width - POKEMON_SIZE);
                     y = Math.random() * (canvas.height - POKEMON_SIZE);
                     
-                    // Check for overlap with existing pokemons
+                    // Check if too close to player starting position
+                    const distFromPlayer = Math.sqrt(
+                        Math.pow(x - gameState.player.x, 2) + 
+                        Math.pow(y - gameState.player.y, 2)
+                    );
+                    
+                    if (distFromPlayer < 100) {
+                        continue; // Too close to player, try again
+                    }
+                    
+                    // Check distance from other pokemons
+                    isValidPosition = true;
                     for (let pokemon of gameState.pokemons) {
-                        if (Math.abs(x - pokemon.x) < POKEMON_SIZE * 1.5 && 
-                            Math.abs(y - pokemon.y) < POKEMON_SIZE * 1.5) {
-                            overlap = true;
+                        const distFromOther = Math.sqrt(
+                            Math.pow(x - pokemon.x, 2) + 
+                            Math.pow(y - pokemon.y, 2)
+                        );
+                        
+                        // Minimum distance between pokemons
+                        if (distFromOther < 120) {
+                            isValidPosition = false;
                             break;
                         }
                     }
-                } while (overlap);
+                }
+                
+                // If we couldn't find a good position after max attempts, use fallback positions
+                if (!isValidPosition) {
+                    console.log(`Using fallback position for pokemon ${i+1}`);
+                    // Fallback positions (pre-defined to avoid overlap)
+                    const fallbackPositions = [
+                        {x: 50, y: 50},
+                        {x: 450, y: 50},
+                        {x: 50, y: 300},
+                        {x: 450, y: 300},
+                        {x: 250, y: 175}
+                    ];
+                    x = fallbackPositions[i].x;
+                    y = fallbackPositions[i].y;
+                }
                 
                 gameState.pokemons.push({
                     id: i,
@@ -756,6 +792,8 @@
                     height: POKEMON_SIZE,
                     caught: false
                 });
+                
+                console.log(`Pokemon ${i+1} positioned at (${Math.round(x)}, ${Math.round(y)})`);
             }
             
             // Setup joystick
@@ -763,7 +801,7 @@
             setupJoystickCatchButton();
             
             drawGame();
-            console.log("Game initialized successfully!");
+            console.log("Game initialized successfully with random positions!");
         }
         
         // Draw game
