@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -79,6 +77,107 @@
             image-rendering: -webkit-crisp-edges;
             image-rendering: pixelated;
             image-rendering: crisp-edges;
+        }
+
+        /* ===== JOYSTICK SYSTEM ===== */
+        .joystick-container {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            z-index: 10;
+            width: 120px;
+            height: 120px;
+            pointer-events: none;
+        }
+
+        .joystick-base {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 3px solid #666;
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+        }
+
+        .joystick-handle {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(145deg, #3498db, #2980b9);
+            border: 3px solid #000;
+            border-radius: 50%;
+            top: 30px;
+            left: 30px;
+            cursor: pointer;
+            touch-action: none;
+            box-shadow: 0 4px 0 #1c5a87;
+            transition: transform 0.1s;
+            pointer-events: all;
+            z-index: 11;
+        }
+
+        .joystick-handle:active {
+            box-shadow: 0 2px 0 #1c5a87;
+        }
+
+        .catch-button-container {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .catch-button-joystick {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(145deg, #e74c3c, #c0392b);
+            border: 4px solid #000;
+            border-radius: 50%;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 6px 0 #96281b;
+            transition: all 0.1s;
+            user-select: none;
+            pointer-events: all;
+            text-align: center;
+            padding: 5px;
+        }
+
+        .catch-button-joystick:active {
+            transform: translateY(3px);
+            box-shadow: 0 3px 0 #96281b;
+        }
+
+        /* Hide original controls on mobile */
+        @media (max-width: 768px) {
+            .controls {
+                display: none;
+            }
+        }
+
+        /* Show joystick on mobile */
+        @media (max-width: 768px) {
+            .joystick-container, .catch-button-container {
+                display: block;
+            }
+        }
+
+        /* Show original controls on desktop */
+        @media (min-width: 769px) {
+            .joystick-container, .catch-button-container {
+                display: none;
+            }
+            .controls {
+                display: flex;
+            }
         }
 
         .controls {
@@ -334,6 +433,37 @@
                 max-width: 95%;
                 max-height: 65%;
             }
+
+            /* Adjust joystick for mobile */
+            .joystick-container {
+                bottom: 10px;
+                left: 10px;
+                width: 100px;
+                height: 100px;
+            }
+
+            .joystick-base {
+                width: 100px;
+                height: 100px;
+            }
+
+            .joystick-handle {
+                width: 50px;
+                height: 50px;
+                top: 25px;
+                left: 25px;
+            }
+
+            .catch-button-container {
+                bottom: 10px;
+                right: 10px;
+            }
+
+            .catch-button-joystick {
+                width: 70px;
+                height: 70px;
+                font-size: 14px;
+            }
         }
     </style>
 </head>
@@ -348,6 +478,17 @@
         </div>
         
         <div class="game-area">
+            <!-- Joystick System -->
+            <div class="joystick-container">
+                <div class="joystick-base"></div>
+                <div class="joystick-handle" id="joystickHandle"></div>
+            </div>
+
+            <!-- Catch Button -->
+            <div class="catch-button-container">
+                <div class="catch-button-joystick" id="catchButtonJoystick">CATCH</div>
+            </div>
+
             <div class="loading" id="loading">Loading Pokémon Adventure...</div>
             <canvas id="gameCanvas" width="600" height="400"></canvas>
             
@@ -404,6 +545,10 @@
         const cakeImage = document.getElementById('cakeImage');
         const finalMessagePopup = document.getElementById('finalMessagePopup');
         const openBtn = document.getElementById('openBtn');
+        
+        // Joystick elements
+        const joystickHandle = document.getElementById('joystickHandle');
+        const catchButtonJoystick = document.getElementById('catchButtonJoystick');
         
         // Control buttons
         const upBtn = document.getElementById('upBtn');
@@ -481,6 +626,119 @@
             ],
             celebrationActive: false
         };
+
+        // ===== JOYSTICK SYSTEM =====
+        function setupJoystick() {
+            const joystickBase = document.querySelector('.joystick-base');
+            
+            if (!joystickHandle) return;
+            
+            let isDragging = false;
+            let startX, startY;
+            let baseRect;
+            let lastMoveTime = 0;
+            const moveDelay = 50; // milliseconds between moves
+            const threshold = 35; // Sensitivity threshold - HIGHER = LESS SENSITIVE
+            
+            // Touch/Click start
+            const startDrag = (clientX, clientY) => {
+                isDragging = true;
+                baseRect = joystickBase.getBoundingClientRect();
+                startX = baseRect.left + baseRect.width / 2;
+                startY = baseRect.top + baseRect.height / 2;
+                updateJoystick(clientX, clientY);
+            };
+            
+            // Update joystick position and movement
+            const updateJoystick = (clientX, clientY) => {
+                if (!isDragging) return;
+                
+                const deltaX = clientX - startX;
+                const deltaY = clientY - startY;
+                const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                const maxDistance = 30;
+                
+                // Limit joystick movement
+                const angle = Math.atan2(deltaY, deltaX);
+                const limitedDistance = Math.min(distance, maxDistance);
+                
+                const joyX = Math.cos(angle) * limitedDistance;
+                const joyY = Math.sin(angle) * limitedDistance;
+                
+                joystickHandle.style.transform = `translate(${joyX}px, ${joyY}px)`;
+                
+                let direction = null;
+                
+                // Only move if joystick is pushed significantly (threshold = 35)
+                if (Math.abs(joyX) > threshold || Math.abs(joyY) > threshold) {
+                    // Check which axis has stronger movement
+                    if (Math.abs(joyX) > Math.abs(joyY)) {
+                        direction = joyX > 0 ? 'right' : 'left';
+                    } else {
+                        direction = joyY > 0 ? 'down' : 'up';
+                    }
+                    
+                    // Throttle movement to prevent too fast movement
+                    const now = Date.now();
+                    if (now - lastMoveTime > moveDelay) {
+                        movePlayer(direction);
+                        lastMoveTime = now;
+                    }
+                }
+            };
+            
+            // Stop dragging
+            const stopDrag = () => {
+                if (isDragging) {
+                    isDragging = false;
+                    joystickHandle.style.transform = 'translate(0, 0)';
+                    lastMoveTime = 0;
+                }
+            };
+            
+            // Touch events
+            joystickHandle.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                startDrag(e.touches[0].clientX, e.touches[0].clientY);
+            });
+            
+            joystickHandle.addEventListener('touchmove', (e) => {
+                if (isDragging) {
+                    e.preventDefault();
+                    updateJoystick(e.touches[0].clientX, e.touches[0].clientY);
+                }
+            }, { passive: false });
+            
+            document.addEventListener('touchend', stopDrag);
+            document.addEventListener('touchcancel', stopDrag);
+            
+            // Mouse events for testing
+            joystickHandle.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                startDrag(e.clientX, e.clientY);
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    e.preventDefault();
+                    updateJoystick(e.clientX, e.clientY);
+                }
+            });
+            
+            document.addEventListener('mouseup', stopDrag);
+        }
+
+        // Setup joystick catch button
+        function setupJoystickCatchButton() {
+            catchButtonJoystick.addEventListener('click', () => {
+                catchPokemon();
+            });
+            
+            catchButtonJoystick.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                catchPokemon();
+            });
+        }
 
         // Enhanced function to resize AND remove white backgrounds for ALL images
         function processImage(image, targetSize) {
@@ -695,6 +953,11 @@
             }
             
             console.log("Game initialized");
+            
+            // Setup joystick
+            setupJoystick();
+            setupJoystickCatchButton();
+            
             drawGame();
         }
         
@@ -978,7 +1241,7 @@
             messageBox.style.display = 'none';
         });
         
-        // Event listeners
+        // Event listeners for original controls
         upBtn.addEventListener('touchstart', (e) => {
             e.preventDefault();
             movePlayer('up');
